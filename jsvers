@@ -1,0 +1,116 @@
+const prompt = require("prompt-sync")();
+
+const MEMORY_SIZE = 1024; // 1KB main memory
+const L1_CACHE_SIZE = 32; // 32 entries
+const L2_CACHE_SIZE = 128; // 128 entries
+const BLOCK_SIZE = 1; // Direct-mapped, single-byte blocks
+
+class CacheBlock {
+    constructor(tag = -1, data = 0, valid = false) {
+        this.tag = tag;
+        this.data = data;
+        this.valid = valid;
+    }
+}
+
+class Cache {
+    constructor(size, nextLevel = null) {
+        this.size = size;
+        this.blocks = Array(size).fill().map(() => new CacheBlock());
+        this.nextLevel = nextLevel;
+    }
+
+    load(address, cycles) {
+        let index = Math.floor((address / BLOCK_SIZE) % this.size);
+        let tag = Math.floor(address / this.size);
+
+        if (this.blocks[index].valid && this.blocks[index].tag === tag) {
+            cycles.count += 1; // Cache hit latency
+            return this.blocks[index].data;
+        }
+
+        cycles.count += 5; // Cache miss penalty
+        return this.nextLevel ? this.nextLevel.load(address, cycles) : null;
+    }
+
+    store(address, value, memory, cycles) {
+        let index = Math.floor((address / BLOCK_SIZE) % this.size);
+        let tag = Math.floor(address / this.size);
+
+        if (this.blocks[index].valid && this.blocks[index].tag === tag) {
+            this.blocks[index].data = value; // Update cache on hit
+            cycles.count += 1;
+        }
+
+        memory[address] = value; // Write-through policy
+        cycles.count += 10; // Memory write penalty
+
+        if (this.nextLevel) {
+            this.nextLevel.store(address, value, memory, cycles);
+        }
+    }
+}
+
+class MemorySystem {
+    constructor() {
+        this.memory = new Array(MEMORY_SIZE).fill(0);
+        this.L2 = new Cache(L2_CACHE_SIZE);
+        this.L1 = new Cache(L1_CACHE_SIZE, this.L2);
+    }
+
+    load(address, cycles) {
+        let value = this.L1.load(address, cycles);
+        if (value === null) {
+            value = this.memory[address]; // Load from memory on full miss
+            cycles.count += 50; // Main memory latency
+        }
+        return value;
+    }
+
+    store(address, value, cycles) {
+        this.L1.store(address, value, this.memory, cycles);
+    }
+
+    displayMemory() {
+        console.log("Memory Contents:");
+        for (let i = 0; i < MEMORY_SIZE; i += 16) {
+            let line = `Addr ${i}: `;
+            for (let j = 0; j < 16; ++j) {
+                line += `${this.memory[i + j]} `;
+            }
+            console.log(line);
+        }
+    }
+}
+
+function interactiveMemoryDemo() {
+    let memsys = new MemorySystem();
+    let cycles = { count: 0 };
+
+    while (true) {
+        console.log("\n1. Read Memory\n2. Write Memory\n3. Display Memory\n4. Exit");
+        let choice = parseInt(prompt("Choose an option: "), 10);
+
+        if (choice === 1) {
+            let address = parseInt(prompt("Enter address to read: "), 10);
+            cycles.count = 0;
+            console.log(`Value: ${memsys.load(address, cycles)}, Cycles: ${cycles.count}`);
+        } else if (choice === 2) {
+            let address = parseInt(prompt("Enter address: "), 10);
+            let value = parseInt(prompt("Enter value: "), 10);
+            cycles.count = 0;
+            memsys.store(address, value, cycles);
+            console.log(`Stored ${value} at ${address}, Cycles: ${cycles.count}`);
+        } else if (choice === 3) {
+            memsys.displayMemory();
+        } else if (choice === 4) {
+            break;
+        } else {
+            console.log("Invalid choice. Try again.");
+        }
+    }
+}
+
+interactiveMemoryDemo();
+
+
