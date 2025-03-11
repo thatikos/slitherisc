@@ -331,7 +331,7 @@ class MemorySystem {
 }
 
 // Demo function to show how memory simulator works with realistic timing
-async function runTimingDemo() {
+/* async function runTimingDemo() {
     const memSystem = new MemorySystem();
     const sleepTime = 1000; // 1 second for each wait cycle
     
@@ -424,4 +424,128 @@ async function runTimingDemo() {
 }
 
 // Run the timing demo
-runTimingDemo();
+runTimingDemo(); */
+
+
+// Demo function to show how memory simulator works with realistic timing
+async function commandLineInterface() {
+
+    const memSystem = new MemorySystem();
+
+    console.log("Memory and Cache System Interactive Demo");
+
+    console.log("Enter commands: 'W value address stage', 'R address stage', 'V level line'");
+
+    console.log("Type 'exit' to quit.");
+
+ 
+
+    const sleepTime = 1000; // 1 second per cycle
+
+ 
+
+    function sleep(ms) {
+
+        return new Promise(resolve => setTimeout(resolve, ms));
+
+    }
+
+ 
+
+    // Example input parsing loop
+
+    const readline = require('readline');
+
+    const rl = readline.createInterface({
+
+        input: process.stdin,
+
+        output: process.stdout
+
+    });
+
+ 
+
+    rl.on('line', async (line) => {
+
+        const [command, ...args] = line.split(" ");
+
+        let result;
+
+       
+
+        switch (command.toUpperCase()) {
+
+            case 'W':
+
+                const [value, address, stage] = args.map(arg => parseInt(arg) || arg);
+
+                result = memSystem.writeThrough(address, value, stage);
+
+                break;
+
+            case 'R':
+
+                const [rAddress, rStage] = args.map(arg => parseInt(arg) || arg);
+
+                result = memSystem.read(rAddress, rStage);
+
+                break;
+
+            case 'V':
+
+                const [level, lineIndex] = args.map(arg => parseInt(arg) || arg);
+
+                if (level === 1) {
+
+                    console.log(memSystem.viewCache(lineIndex));
+
+                } else if (level === 0) {
+
+                    console.log(memSystem.viewMemory(lineIndex));
+
+                } else {
+
+                    console.log('Invalid level');
+
+                }
+
+                break;
+
+            case 'EXIT':
+
+                rl.close();
+
+                return;
+
+            default:
+
+                console.log('Unknown command');
+
+        }
+
+       
+
+        while (result && result.status === 'wait') {
+
+            await sleep(sleepTime);
+
+            result = memSystem.processCycle();
+
+        }
+
+       
+
+        if (result && result.status === 'done') {
+
+            console.log(result);
+
+        }
+
+    });
+
+}
+
+ 
+
+commandLineInterface();
