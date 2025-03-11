@@ -298,6 +298,31 @@ class MemorySystem {
         return this.memory.viewLine(lineIndex);
     }
 
+    class MemorySystem {
+    constructor() {
+        // Initialize cache, memory, etc.
+    }
+
+    // Other methods...
+
+    // View all cache lines
+    viewEntireCache() {
+        console.log("\n--- Entire Cache State ---");
+        for (let i = 0; i < cacheSize; i++) {
+            const line = this.cache.viewLine(i);
+            console.log(`Cache Line ${i}: Valid=${line.valid}, Tag=${line.tag}, Data=${line.data}`);
+        }
+    }
+
+    // View entire memory (optional, if needed for demo)
+    viewEntireMemory() {
+        console.log("\n--- Entire Memory State ---");
+        for (let i = 0; i < this.memory.lines; i++) {
+            const line = this.memory.viewLine(i);
+            console.log(`Memory Line ${i}: Data=${line}`);
+        }
+    }
+
     // View address in both cache and memory
     viewAddress(address) {
         const memLineIndex = Math.floor((address / wordsPerLine) % this.memory.lines);
