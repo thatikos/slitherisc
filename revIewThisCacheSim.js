@@ -298,13 +298,6 @@ class MemorySystem {
         return this.memory.viewLine(lineIndex);
     }
 
-    class MemorySystem {
-    constructor() {
-        // Initialize cache, memory, etc.
-    }
-
-    // Other methods...
-
     // View all cache lines
     viewEntireCache() {
         console.log("\n--- Entire Cache State ---");
