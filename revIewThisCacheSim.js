@@ -529,7 +529,16 @@ async function commandLineInterface() {
                 }
 
                 break;
-
+            case 'STATS': {
+                const stats = memSystem.getStats();
+                console.log("\n--- Memory System Statistics ---");
+                console.log(`Total Reads: ${stats.reads}`);
+                console.log(`Total Writes: ${stats.writes}`);
+                console.log(`Cache Hits: ${stats.cacheHits}`);
+                console.log(`Cache Misses: ${stats.cacheMisses}`);
+                console.log(`Cache Hit Rate: ${(stats.hitRate * 100).toFixed(2)}%`);
+                break;
+            }
             case 'EXIT':
 
                 rl.close();
