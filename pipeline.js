@@ -5,6 +5,78 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
+
+class Pipeline {
+    constructor() {
+
+        this.stages = {
+            fetch: null,
+            decode: null,
+            execute: null,
+            memory: null,
+            writeBack: null
+        };
+        this.clockCycle = 0;
+
+    }
+
+    getInstruction(instruction) {
+        this.stages.fetch = instruction;
+    }
+
+    updatePipeline(){ 
+
+        this.stages.writeBack = this.stages.memory;
+            
+        const executeInst = this.stages.execute ? this.stages.execute.split(" ")[0] : null;
+        
+        if (executeInst) { //check if its null
+
+            if (executeInst === "LOAD" || executeInst === "STR") {
+                this.stages.memory = this.stages.execute;
+            } 
+            
+            else { //its not a memory instruction
+
+              
+
+                if (!this.stages.writeBack) { //this checks if the writeBack is empty
+                    this.stages.writeBack = this.stages.execute;
+                } 
+                
+                else {
+
+                    //fix this logic ??
+                    
+                    this.stallPipeline = true;
+                    return; 
+                }
+            }
+        } 
+        else {
+            // No instruction in execute stage
+            this.stages.memory = null;
+        }
+
+   
+        this.stages.execute = this.stages.decode;
+        this.stages.decode = this.stages.fetch;
+        this.stages.fetch = null;
+      
+    }
+
+    displayPipeline() {
+        console.log(`This is the fetch stage: ${this.stages.fetch}`);
+        console.log(`This is the execute stage: ${this.stages.execute}`);
+        console.log(`This is the decode stage: ${this.stages.decode}`);
+        console.log(`This is the memory stage: ${this.stages.memory}`);
+        console.log(`This is the write back stage: ${this.stages.writeBack}`);
+        console.log(`This is CLOCK CYCLE: ${this.clockCycle}`);
+        //TODO:
+
+    }
+}
+
 //Create a register class; 
 //We going to have 32 general purpose registers. 
 class Register {
@@ -43,6 +115,7 @@ const registers = new GeneralRegisters();
 const instructionReg = new Register();
 const PC = new Register(-1); 
 const instructionQueue = []; 
+const p = new Pipeline();
 
 function askForCommand() {
     rl.question("Input Instruction: ", (instruction) => {
@@ -60,7 +133,10 @@ function askForCommand() {
         //Then if allowed, pop off the first element ant put it into the instruction register
 
         //we need to check if there is a stall first before popping off the queue. 
-        instructionReg.write(instructionQueue.shift()); //we get the first element. 
+        i = instructionQueue.shift()
+        instructionReg.write(i); //we get the first element. 
+        p.getInstruction(i);
+        p.displayPipeline();
 
 
         //We then input the instruction in the instruction register into the decode function
@@ -100,6 +176,7 @@ function decode(instruction) {
             break; 
         
         case 'LOAD': 
+            LOAD(listOfInst[1], listOfInst[2])
             break; 
 
         case 'STR':
@@ -124,8 +201,11 @@ function ADD(Rd, Rn, Rm) {
     console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
 }
 
-function SUB(Rd, Rn, Rm) {
-    return; 
+//This function is wrong,, im just using it to test
+function LOAD(Rd, immediate) {
+    RdNum = Rd.slice(1);
+    registers.write(RdNum, Number(immediate));
+    
 }
 
 
