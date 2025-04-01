@@ -57,8 +57,8 @@ class Pipeline {
 
     displayPipeline() {
         console.log(`This is the fetch stage: ${this.stages.fetch}`);
-        console.log(`This is the execute stage: ${this.stages.execute}`);
         console.log(`This is the decode stage: ${this.stages.decode}`);
+        console.log(`This is the execute stage: ${this.stages.execute}`);
         console.log(`This is the memory stage: ${this.stages.memory}`);
         console.log(`This is the write back stage: ${this.stages.writeBack}`);
         console.log(`This is CLOCK CYCLE: ${this.clockCycle}`);
