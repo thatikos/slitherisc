@@ -1,4 +1,5 @@
 const readline = require('readline');
+const { pipeline } = require('stream');
 
 const rl = readline.createInterface({
     input: process.stdin,
@@ -17,6 +18,7 @@ class Pipeline {
             writeBack: null
         };
         this.clockCycle = 0;
+        this.isMemoryInstruction = false; 
 
     }
 
@@ -24,54 +26,43 @@ class Pipeline {
         this.stages.fetch = instruction;
     }
 
+    checkMemoryInstruction(instruction) {
+        instruction = String(instruction);
+        if(instruction === "LOAD" || instruction === "STR") { this.isMemoryInstruction = true }
+        console.log(this.isMemoryInstruction);
+    }
+
     updatePipeline(){ 
 
-        this.stages.writeBack = this.stages.memory;
-            
-        const executeInst = this.stages.execute ? this.stages.execute.split(" ")[0] : null;
-        
-        if (executeInst) { //check if its null
 
-            if (executeInst === "LOAD" || executeInst === "STR") {
-                this.stages.memory = this.stages.execute;
-            } 
-            
-            else { //its not a memory instruction
-
-              
-
-                if (!this.stages.writeBack) { //this checks if the writeBack is empty
-                    this.stages.writeBack = this.stages.execute;
-                } 
-                
-                else {
-
-                    //fix this logic ??
-                    
-                    this.stallPipeline = true;
-                    return; 
-                }
-            }
-        } 
-        else {
-            // No instruction in execute stage
-            this.stages.memory = null;
+        if(this.isMemoryInstruction) {
+            this.stages.writeBack = this.stages.memory; 
+            this.stages.memory = this.stages.execute;
+            this.stages.execute = this.stages.decode;
+            this.stages.decode = this.stages.fetch;
+            this.stages.fetch = null;
         }
 
-   
-        this.stages.execute = this.stages.decode;
-        this.stages.decode = this.stages.fetch;
-        this.stages.fetch = null;
+        else {
+            this.stages.writeBack = this.stages.execute; 
+            this.stages.execute = this.stages.decode;
+            this.stages.decode = this.stages.fetch;
+            this.stages.fetch = null;
+        }
+
+        //check if the WB stage is not null, if so, set ismemoryinstruction flag back to false;
+        if(this.stages.writeBack) { this.isMemoryInstruction = false; }
       
     }
 
     displayPipeline() {
         console.log(`This is the fetch stage: ${this.stages.fetch}`);
-        console.log(`This is the execute stage: ${this.stages.execute}`);
         console.log(`This is the decode stage: ${this.stages.decode}`);
+        console.log(`This is the execute stage: ${this.stages.execute}`);
         console.log(`This is the memory stage: ${this.stages.memory}`);
         console.log(`This is the write back stage: ${this.stages.writeBack}`);
         console.log(`This is CLOCK CYCLE: ${this.clockCycle}`);
+        console.log(`\n`);
         //TODO:
 
     }
@@ -126,6 +117,7 @@ function askForCommand() {
         }
 
         //First we increment the PC
+        instruction = instruction.toUpperCase(); 
         PC.write(PC.read() + 1);
         console.log(PC.read());
         //Afterwards we add the instruction to an instruction Queue:
@@ -135,7 +127,12 @@ function askForCommand() {
         //we need to check if there is a stall first before popping off the queue. 
         i = instructionQueue.shift()
         instructionReg.write(i); //we get the first element. 
+
+        p.updatePipeline(); //clears previous instruction
         p.getInstruction(i);
+   
+        const inst = String(i).split(" ")[0];
+        p.checkMemoryInstruction(inst);
         p.displayPipeline();
 
 
@@ -161,9 +158,12 @@ function decode(instruction) {
 
     let listOfInst = instruction.split(" "); 
     //Format is Rd, Rn, Rm
-    switch(listOfInst[0].toUpperCase()){
+    switch(listOfInst[0]){
         case 'ADD':
-            //Insert ADD function 
+            //Insert ADD function
+            p.updatePipeline();
+            p.displayPipeline(); 
+
             ADD(listOfInst[1], listOfInst[2], listOfInst[3]); 
             break; 
         case 'ADDI':
@@ -176,18 +176,25 @@ function decode(instruction) {
             break; 
         
         case 'LOAD': 
-            LOAD(listOfInst[1], listOfInst[2])
+            p.updatePipeline();
+            p.displayPipeline();
+
+            LOAD(listOfInst[1], listOfInst[2]);
+
             break; 
 
         case 'STR':
             break; 
         
     }
-    return; 
+    p.clockCycle++;
+    console.log(`The Clock Cycle is now at: ${p.clockCycle}`);
 }
 
 function ADD(Rd, Rn, Rm) {
-
+    console.log(`This is the OPCODE for ADD: 00000`)
+    p.updatePipeline();
+    p.displayPipeline();
     //there's probaby a less redundant way of doing this,, im too lazy rn 
     RdNum = Rd.slice(1);
     RnNum = Rn.slice(1);
@@ -196,15 +203,27 @@ function ADD(Rd, Rn, Rm) {
     //Using the parameters, we call the specific registers. 
     value = registers.read(RnNum) + registers.read(RmNum);
     console.log(value);
+    
+    p.updatePipeline();
+    p.displayPipeline();
     registers.write(RdNum, value);
 
     console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
 }
 
 //This function is wrong,, im just using it to test
-function LOAD(Rd, immediate) {
+function LOAD(Rd, offset) {
+    p.updatePipeline();
+    p.displayPipeline();
+
     RdNum = Rd.slice(1);
-    registers.write(RdNum, Number(immediate));
+    //IN this part we get from meory
+    p.updatePipeline();
+    p.displayPipeline();
+
+    p.updatePipeline();
+    p.displayPipeline();
+    registers.write(RdNum, Number(offset));
     
 }
 
