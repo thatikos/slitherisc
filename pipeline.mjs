@@ -19,41 +19,22 @@ class Pipeline {
             writeBack: null
         };
         this.clockCycle = 0;
-        this.isMemoryInstruction = false; 
-
     }
 
     getInstruction(instruction) {
         this.stages.fetch = instruction;
     }
 
-    checkMemoryInstruction(instruction) {
-        instruction = String(instruction);
-        if(instruction === "LOAD" || instruction === "STR") { this.isMemoryInstruction = true }
-        console.log(this.isMemoryInstruction);
-    }
+
 
     updatePipeline(){ 
 
+        this.stages.writeBack = this.stages.memory; 
+        this.stages.memory = this.stages.execute;
+        this.stages.execute = this.stages.decode;
+        this.stages.decode = this.stages.fetch;
+        this.stages.fetch = null;
 
-        if(this.isMemoryInstruction) {
-            this.stages.writeBack = this.stages.memory; 
-            this.stages.memory = this.stages.execute;
-            this.stages.execute = this.stages.decode;
-            this.stages.decode = this.stages.fetch;
-            this.stages.fetch = null;
-        }
-
-        else {
-            this.stages.writeBack = this.stages.execute; 
-            this.stages.execute = this.stages.decode;
-            this.stages.decode = this.stages.fetch;
-            this.stages.fetch = null;
-        }
-
-        //check if the WB stage is not null, if so, set ismemoryinstruction flag back to false;
-        if(this.stages.writeBack) { this.isMemoryInstruction = false; }
-      
     }
 
     displayPipeline() {
@@ -135,7 +116,6 @@ function askForCommand() {
         p.getInstruction(i);
    
         const inst = String(i).split(" ")[0];
-        p.checkMemoryInstruction(inst);
         p.displayPipeline();
 
 
@@ -182,16 +162,25 @@ function decode(instruction) {
             p.updatePipeline();
             p.displayPipeline();
 
-            LOAD(listOfInst[1], listOfInst[2]);
-
+            LOAD(listOfInst[1], listOfInst[2], listOfInst[3]);
             break; 
 
         case 'STR':
             break; 
 
         case 'MOV':
+            p.updatePipeline();
+            p.displayPipeline();
+
+            MOV(listOfInst[1], listOfInst[2]);
             break; 
         
+        case "MOVI": 
+            p.updatePipeline();
+            p.displayPipeline();
+
+            MOVI(listOfInst[1], listOfInst[2]); //Takes in a Rd, and an immediate as parameters. 
+            break;
     }
     p.clockCycle++;
     console.log(`The Clock Cycle is now at: ${p.clockCycle}`);
@@ -207,7 +196,7 @@ function ADD(Rd, Rn, Rm) {
     const RmNum = Rm.slice(1);
 
     //Using the parameters, we call the specific registers. 
-    const value = registers.read(RnNum) + registers.read(RmNum);
+    const value = Number(registers.read(RnNum)) + Number(registers.read(RmNum));
     console.log(value);
     
     p.updatePipeline();
@@ -217,20 +206,61 @@ function ADD(Rd, Rn, Rm) {
     console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
 }
 
+function ADDI() {
+    
+    return; 
+}
+
+function SUB() {
+    return; 
+}
+
+function SUBI() {
+    return; 
+}
+
+function STR() {
+
+}
+
 //This function is wrong,, im just using it to test
 function LOAD(Rd, Rn, offset) {
+    return;
+}
+
+//TODO
+//Rd is the destination register
+function MOV(Rd, Rn){
     p.updatePipeline();
     p.displayPipeline();
 
     const RdNum = Rd.slice(1);
-    //IN this part we get from meory
-    p.updatePipeline();
-    p.displayPipeline();
+    const RnNum = Rn.slice(1);
+    const value = registers.read(RnNum); // get the value in Register Rn
 
     p.updatePipeline();
     p.displayPipeline();
-    registers.write(RdNum, Number(offset));
-    
+
+    registers.write(RdNum, value); //Update the value in Rd w new value 
+    console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
+}
+
+function MOVI(Rd, immediate) {
+    p.updatePipeline();
+    p.displayPipeline();
+
+    const RdNum = Rd.slice(1);
+
+    p.updatePipeline();
+    p.displayPipeline();
+
+    const value = immediate; 
+
+    p.updatePipeline();
+    p.displayPipeline();
+
+    registers.write(RdNum, value);
+    console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
 }
 
 
