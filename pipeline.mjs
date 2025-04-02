@@ -19,6 +19,7 @@ class Pipeline {
             writeBack: null
         };
         this.clockCycle = 0;
+        this.isStall = false;
     }
 
     getInstruction(instruction) {
@@ -89,6 +90,8 @@ const instructionReg = new Register();
 const PC = new Register(-1); 
 const instructionQueue = []; 
 const p = new Pipeline();
+global.memorySystem = new MemorySystem();
+
 
 function askForCommand() {
     rl.question("Input Instruction: ", (instruction) => {
@@ -149,13 +152,27 @@ function decode(instruction) {
 
             ADD(listOfInst[1], listOfInst[2], listOfInst[3]); 
             break; 
+
         case 'ADDI':
+
+            p.updatePipeline();
+            p.displayPipeline(); 
+
+            ADDI(listOfInst[1], listOfInst[2], listOfInst[3]); 
             break;
             
         case 'SUB':
+            p.updatePipeline();
+            p.displayPipeline(); 
+
+            SUB(listOfInst[1], listOfInst[2], listOfInst[3]); 
             break;
         
         case 'SUBI':
+            p.updatePipeline();
+            p.displayPipeline(); 
+
+            SUBI(listOfInst[1], listOfInst[2], listOfInst[3]); 
             break; 
         
         case 'LOAD': 
@@ -166,6 +183,10 @@ function decode(instruction) {
             break; 
 
         case 'STR':
+            p.updatePipeline();
+            p.displayPipeline();
+
+            STR(listOfInst[1], listOfInst[2], listOfInst[3]);
             break; 
 
         case 'MOV':
@@ -197,8 +218,10 @@ function ADD(Rd, Rn, Rm) {
 
     //Using the parameters, we call the specific registers. 
     const value = Number(registers.read(RnNum)) + Number(registers.read(RmNum));
-    console.log(value);
     
+    p.updatePipeline();
+    p.displayPipeline();
+
     p.updatePipeline();
     p.displayPipeline();
     registers.write(RdNum, value);
@@ -206,26 +229,165 @@ function ADD(Rd, Rn, Rm) {
     console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
 }
 
-function ADDI() {
+function ADDI(Rd, Rn, immediate) {
+    p.updatePipeline();
+    p.displayPipeline();
+
+    const RdNum = Rd.slice(1);
+    const RnNum = Rn.slice(1);
+
+    const value = Number(registers.read(RnNum)) + Number(immediate);
+
+    p.updatePipeline();
+    p.displayPipeline();
+
+    p.updatePipeline();
+    p.displayPipeline();
+    registers.write(RdNum, value);
+
+    console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
+
+}
+
+function SUB(Rd, Rn, Rm) {
+
+    p.updatePipeline();
+    p.displayPipeline();
+    //there's probaby a less redundant way of doing this,, im too lazy rn 
+    const RdNum = Rd.slice(1);
+    const RnNum = Rn.slice(1);
+    const RmNum = Rm.slice(1);
+
+    //Using the parameters, we call the specific registers. 
+    const value = Number(registers.read(RnNum)) - Number(registers.read(RmNum));
     
-    return; 
+    p.updatePipeline();
+    p.displayPipeline();
+    
+    p.updatePipeline();
+    p.displayPipeline();
+    registers.write(RdNum, value);
+
+    console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
+
 }
 
-function SUB() {
-    return; 
-}
+function SUBI(Rd, Rn, immediate) {
+    p.updatePipeline();
+    p.displayPipeline();
 
-function SUBI() {
-    return; 
-}
+    const RdNum = Rd.slice(1);
+    const RnNum = Rn.slice(1);
 
-function STR() {
+    const value = Number(registers.read(RnNum)) - Number(immediate);
 
+    p.updatePipeline();
+    p.displayPipeline();
+
+    p.updatePipeline();
+    p.displayPipeline();
+    registers.write(RdNum, value);
+
+    console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
 }
 
 //This function is wrong,, im just using it to test
 function LOAD(Rd, Rn, offset) {
-    return;
+    p.updatePipeline();
+    p.displayPipeline();
+
+    const RdNum = Rd.slice(1);
+    const RnNum = Rn.slice(1);
+
+    const memoryAddress = Number(registers.read(RnNum)) + Number(offset);
+
+    if (!global.memorySystem) {
+        global.memorySystem = new MemorySystem();
+    }
+    
+    p.updatePipeline();
+    p.displayPipeline();
+    
+    // Request value from memory system
+    // The 'memory' parameter indicates this request is from the memory stage
+    const result = global.memorySystem.read(memoryAddress, 'memory');
+    
+    // If the result is not immediately available
+    if (result.status === "wait") {
+        console.log(`Memory access in progress for address ${memoryAddress}`);
+        
+        // Process cycles until complete
+        let memResult = result;
+        while (memResult.status === "wait") {
+            global.memorySystem.processCycle();
+            // Check if there are still pending requests
+            if (global.memorySystem.pendingRequests.has('memory')) {
+                memResult = { status: "wait" };
+            } else {
+                // No more pending requests means it's done
+                // Get the value directly from cache or memory
+                const cacheResult = global.memorySystem.cache.read(memoryAddress);
+                if (cacheResult.hit) {
+                    memResult = { status: "done", data: cacheResult.data };
+                } else {
+                    // Fallback to reading from memory directly
+                    const { lineIndex, offset } = global.memorySystem.memory.getLineAndOffset(memoryAddress);
+                    memResult = { status: "done", data: global.memorySystem.memory.data[lineIndex][offset] };
+                }
+            }
+            console.log(`Memory access cycle: ${memResult.status}`);
+        }
+        
+        // Once memory access is complete
+        registers.write(RdNum, memResult.data);
+        console.log(`Loaded value ${memResult.data} from address ${memoryAddress} to register ${Rd}`);
+    } else {
+        // Cache hit with no delay
+        registers.write(RdNum, result.data);
+        console.log(`Loaded value ${result.data} from address ${memoryAddress} to register ${Rd}`);
+    }
+    
+    p.updatePipeline();
+    p.displayPipeline();
+}
+
+function STR(Rd, Rn, offset) {
+    p.updatePipeline();
+    p.displayPipeline();
+
+    const RdNum = Rd.slice(1);
+    const RnNum = Rn.slice(1);
+
+    // Calculate the memory address
+    const memoryAddress = Number(registers.read(RnNum)) + Number(offset);
+    // Get the value to store from Rd
+    const valueToStore = registers.read(RdNum);
+    
+    p.updatePipeline();
+    p.displayPipeline();
+    
+    // Write value to memory system
+    const result = global.memorySystem.write(memoryAddress, valueToStore, 'memory');
+    
+    // If the result is not immediately available (delay)
+    if (result.status === "wait") {
+        console.log(`Memory write in progress for address ${memoryAddress}`);
+        // Process cycles until the request completes
+        let memResult = result;
+        while (memResult.status === "wait") {
+            global.memorySystem.processCycle();
+            memResult = global.memorySystem.processWrite(memoryAddress, valueToStore, 'memory');
+            console.log(`Memory write cycle: ${memResult.status}`);
+        }
+        
+        console.log(`Stored value ${valueToStore} to address ${memoryAddress} from register ${Rd}`);
+    } else {
+        console.log(`Stored value ${valueToStore} to address ${memoryAddress} from register ${Rd}`);
+    }
+    
+    p.updatePipeline();
+    p.displayPipeline();
+
 }
 
 //TODO
