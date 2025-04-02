@@ -291,7 +291,7 @@ function SUBI(Rd, Rn, immediate) {
     console.log(`This is the Value in Register ${Rd}: ${registers.read(RdNum)}`);
 }
 
-//This function is wrong,, im just using it to test
+//
 function LOAD(Rd, Rn, offset) {
     p.updatePipeline();
     p.displayPipeline();
@@ -336,6 +336,9 @@ function LOAD(Rd, Rn, offset) {
                 }
             }
             console.log(`Memory access cycle: ${memResult.status}`);
+            p.clockCycle++;
+            console.log(`The Clock Cycle is now at: ${p.clockCycle}`);
+
         }
         
         // Once memory access is complete
@@ -351,6 +354,8 @@ function LOAD(Rd, Rn, offset) {
     p.displayPipeline();
 }
 
+//For this function, the value in Rd is being stored at memory address [Rn] + offset
+//Where [Rn] is the value stored in Rn...
 function STR(Rd, Rn, offset) {
     p.updatePipeline();
     p.displayPipeline();
@@ -378,11 +383,16 @@ function STR(Rd, Rn, offset) {
             global.memorySystem.processCycle();
             memResult = global.memorySystem.processWrite(memoryAddress, valueToStore, 'memory');
             console.log(`Memory write cycle: ${memResult.status}`);
+            
+            p.clockCycle++;
+            console.log(`The Clock Cycle is now at: ${p.clockCycle}`);
         }
         
-        console.log(`Stored value ${valueToStore} to address ${memoryAddress} from register ${Rd}`);
-    } else {
-        console.log(`Stored value ${valueToStore} to address ${memoryAddress} from register ${Rd}`);
+        console.log(`Stored value ${valueToStore} to address ${memoryAddress} from register ${Rd} \n`);
+    } 
+    
+    else {
+        console.log(`Stored value ${valueToStore} to address ${memoryAddress} from register ${Rd} \n`);
     }
     
     p.updatePipeline();
@@ -484,6 +494,9 @@ We fetch the user input instruction and store it in a program counter.
 Do we need an instruction queue? Idk lol 
 
 We dont need an accumulator 
+
+We need a program counter? and a Instruction register? 
+*/
 
 We need a program counter? and a Instruction register? 
 */
