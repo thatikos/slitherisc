@@ -498,5 +498,3 @@ We dont need an accumulator
 We need a program counter? and a Instruction register? 
 */
 
-We need a program counter? and a Instruction register? 
-*/
