@@ -1,0 +1,14 @@
+{
+  "name": "slitherrisc-simulator",
+  "version": "1.0.0",
+  "description": "Simulator for custom 32-bit SlitherRISC ISA with pipelining and cache, running on Electron GUI",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "snigdha thatikonda",
+  "license": "MIT",
+  "dependencies": {
+  "electron": "^36.0.0"
+  }
+}
