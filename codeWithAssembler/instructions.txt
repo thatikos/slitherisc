@@ -1,0 +1,12 @@
+MOVI R1, 10     
+MOVI R2, 10      
+MOVI R3, 5      
+
+BEQ R1, R2, BRANCH_TAKEN_EQ 
+
+ADDI R5, R5, 1  
+ADDI R6, R6, 1   
+
+BRANCH_TAKEN_EQ:
+MOVI R7, 77      
+
