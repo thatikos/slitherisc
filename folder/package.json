@@ -1,0 +1,17 @@
+{
+    "name": "cpu-pipeline-simulator",
+    "version": "1.0.0",
+    "description": "CPU Pipeline Simulator with GUI",
+    "main": "editedPipeline.mjs",
+    "type": "module",
+    "scripts": {
+        "start": "electron .",
+        "build": "electron-builder"
+    },
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "electron": "^35.1.5",
+        "electron-builder": "^24.9.1"
+    }
+}

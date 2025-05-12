@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>CPU Pipeline Simulator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f0f0;
+      color: #333;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 20px;
+    }
+
+    .section {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      color: #2c3e50;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 10px;
+      margin-top: 0;
+    }
+
+    h2 {
+      color: #2c3e50;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+
+    .clock {
+      font-size: 24px;
+      font-weight: bold;
+      color: #e74c3c;
+      text-align: center;
+      margin: 10px 0 30px 0;
+    }
+    /* Stalled class removed as stall logic isn't fully implemented */
+
+    .controls {
+      display: flex;
+      gap: 10px;
+      margin: 20px 0;
+      justify-content: center;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+     button:disabled {
+        background-color: #bdc3c7;
+        cursor: not-allowed;
+     }
+
+    .registers-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .register {
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 8px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 13px;
+      min-height: 1.5em; /* Ensure consistent height */
+    }
+
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      max-height: 350px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+
+    .memory-cell {
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 5px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status {
+      text-align: center;
+      padding: 10px;
+      font-style: italic;
+      color: #7f8c8d;
+      margin-top: 20px;
+      min-height: 1.2em;
+    }
+    .status.error {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    /* Highlight style */
+    .highlight {
+      background-color: #ffeb3b !important;
+      transition: background-color 0.1s ease-in-out;
+    }
+    .highlight-remove {
+      transition: background-color 0.5s ease-in-out;
+      background-color: #f9f9f9; /* Default background */
+    }
+
+
+    .special-registers {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .special-register {
+      flex: 1;
+      background-color: #e8f4f8;
+      border: 1px solid #b3d4fc;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
+      font-family: monospace;
+      font-size: 14px;
+    }
+     .special-register div:first-child {
+        font-size: 12px;
+        font-weight: bold;
+        color: #7f8c8d;
+        margin-bottom: 5px;
+     }
+
+    .queue {
+      background-color: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      margin-top: 15px;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    .queue-empty-message {
+        text-align: center;
+        color: #999;
+        padding: 10px;
+    }
+
+    .queue-item {
+      font-family: monospace;
+      padding: 3px 5px;
+      margin: 2px 0;
+      background-color: #f0f7fc;
+      border-radius: 3px;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+     .queue-item:first-child { /* Visually next instruction */
+         font-weight: bold;
+         background-color: #e0effc;
+     }
+
+     /* Simple Pipeline Stage Display (Optional) */
+     .pipeline-display {
+         display: flex;
+         justify-content: space-around;
+         margin-bottom: 20px;
+         background: #eee;
+         padding: 10px;
+         border-radius: 5px;
+         font-family: monospace;
+         font-size: 12px;
+     }
+     .pipeline-stage {
+         border: 1px solid #ccc;
+         padding: 5px 10px;
+         background: white;
+         min-width: 100px;
+         text-align: center;
+         white-space: nowrap;
+         overflow: hidden;
+         text-overflow: ellipsis;
+     }
+     .pipeline-stage strong { display: block; margin-bottom: 3px; font-size: 10px; color: #555;}
+
+  </style>
+</head>
+<body>
+  <h1>CPU Pipeline Simulator</h1>
+
+  <div class="controls">
+    <button id="loadBtn">Load Instructions</button>
+    <button id="stepBtn" disabled>Step</button>
+    <button id="runBtn" disabled>Run</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+
+  <div class="clock" id="clockCycle">Clock Cycle: 0</div>
+
+  <div class="pipeline-display">
+        <div class="pipeline-stage"><strong>FETCH</strong><span id="stage-fetch">-</span></div>
+        <div class="pipeline-stage"><strong>DECODE</strong><span id="stage-decode">-</span></div>
+        <div class="pipeline-stage"><strong>EXECUTE</strong><span id="stage-execute">-</span></div>
+        <div class="pipeline-stage"><strong>MEMORY</strong><span id="stage-memory">-</span></div>
+        <div class="pipeline-stage"><strong>WRITEBACK</strong><span id="stage-writeback">-</span></div>
+   </div>
+
+  <div class="container">
+    <div class="left-column">
+      <div class="section">
+        <h2>Special Registers</h2>
+        <div class="special-registers">
+          <div class="special-register">
+            <div>Program Counter (PC)</div>
+            <div id="pc-value">-1</div>
+          </div>
+          <div class="special-register">
+             <div>Instruction Register (IR)</div>
+             <div id="ir-value">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>General Registers (R0-R31)</h2>
+        <div class="registers-grid" id="registers-container">
+          </div>
+      </div>
+    </div>
+
+    <div class="right-column">
+      <div class="section">
+        <h2>Instruction Queue</h2>
+        <div class="queue" id="instruction-queue">
+          <div class="queue-empty-message">Queue Empty</div> </div>
+      </div>
+
+      <div class="section">
+        <h2>Memory (Addresses 0-63)</h2>
+        <div class="memory-grid" id="memory-container">
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="status-message">Load instructions to begin.</div>
+
+  <script>
+    // Make sure require is available
+    const { ipcRenderer } = require('electron');
+
+    // --- UI Element References ---
+    const clockCycleElement = document.getElementById('clockCycle');
+    // Pipeline Stage Elements (Optional)
+    const stageFetch = document.getElementById('stage-fetch');
+    const stageDecode = document.getElementById('stage-decode');
+    const stageExecute = document.getElementById('stage-execute');
+    const stageMemory = document.getElementById('stage-memory');
+    const stageWriteback = document.getElementById('stage-writeback');
+    // Other Elements
+    const pcValueElement = document.getElementById('pc-value');
+    const irValueElement = document.getElementById('ir-value');
+    const registersContainer = document.getElementById('registers-container');
+    const instructionQueueContainer = document.getElementById('instruction-queue');
+    const memoryContainer = document.getElementById('memory-container');
+    const loadBtn = document.getElementById('loadBtn');
+    const stepBtn = document.getElementById('stepBtn');
+    const runBtn = document.getElementById('runBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const statusMessage = document.getElementById('status-message');
+
+    // --- State Variables ---
+    let isRunning = false;
+    let runInterval;
+    const runSpeed = 250; // ms
+    let registerElements = {};
+    let memoryElements = {};
+    let lastRegisterValues = Array(32).fill(0); // Store last values for highlighting
+    let lastMemoryValues = {}; // Store last values for highlighting
+
+    // --- UI Initialization Functions ---
+    function initializeRegistersUI() {
+       registersContainer.innerHTML = '';
+       registerElements = {};
+       lastRegisterValues = Array(32).fill(0); // Reset last values
+        for (let i = 0; i < 32; i++) {
+            const registerElement = document.createElement('div');
+            registerElement.className = 'register';
+            registerElement.id = `r${i}`;
+            const initialValue = 0;
+            registerElement.innerText = `R${i}: ${initialValue}`;
+            registersContainer.appendChild(registerElement);
+            registerElements[i] = registerElement;
+            lastRegisterValues[i] = initialValue; // Store initial value
+        }
+    }
+
+    function initializeMemoryUI() {
+        memoryContainer.innerHTML = '';
+        memoryElements = {};
+        lastMemoryValues = {}; // Reset last values
+        for (let i = 0; i < 64; i++) {
+            const memoryCell = document.createElement('div');
+            memoryCell.className = 'memory-cell';
+            memoryCell.id = `mem-${i}`;
+            const initialValue = 0;
+            memoryCell.innerText = `Addr ${i}: ${initialValue}`;
+            memoryContainer.appendChild(memoryCell);
+            memoryElements[i] = memoryCell;
+            lastMemoryValues[i] = initialValue; // Store initial value
+        }
+    }
+
+    // --- Control Button Management ---
+    function updateControlButtons(load, step, run, reset) {
+        loadBtn.disabled = !load;
+        stepBtn.disabled = !step;
+        runBtn.disabled = !run;
+        resetBtn.disabled = !reset;
+        runBtn.innerText = isRunning ? 'Pause' : 'Run';
+    }
+
+     // --- Highlighting Function ---
+     function highlightElement(element) {
+        if (!element) return;
+        element.classList.remove('highlight', 'highlight-remove');
+        void element.offsetWidth; // Reflow
+        element.classList.add('highlight');
+        setTimeout(() => {
+             element.classList.remove('highlight');
+             element.classList.add('highlight-remove');
+             // Use transitionend event listener for more robust removal? Maybe later.
+             setTimeout(() => element.classList.remove('highlight-remove'), 500);
+         }, 150);
+     }
+
+    // --- Initial UI Setup ---
+    initializeRegistersUI();
+    initializeMemoryUI();
+    updateControlButtons(true, false, false, true);
+
+    // --- Button Event Listeners ---
+    loadBtn.addEventListener('click', () => {
+      statusMessage.classList.remove('error');
+      updateControlButtons(false, false, false, false);
+      statusMessage.innerText = 'Loading instructions...';
+      ipcRenderer.send('start-simulation');
+    });
+
+    stepBtn.addEventListener('click', () => {
+        if (!isRunning) {
+             statusMessage.classList.remove('error');
+             statusMessage.innerText = 'Stepping...';
+             ipcRenderer.send('step-simulation');
+        }
+    });
+
+    runBtn.addEventListener('click', () => {
+      if (!isRunning) { // Start running
+        statusMessage.classList.remove('error');
+        statusMessage.innerText = 'Running...';
+        isRunning = true;
+        updateControlButtons(false, false, true, false); // Can only Pause or Reset
+        runInterval = setInterval(() => {
+            // Check if queue is visually empty before sending step
+             const queueIsEmpty = !instructionQueueContainer.children.length || instructionQueueContainer.querySelector('.queue-empty-message');
+            if (queueIsEmpty && !stageDecode.innerText && !stageExecute.innerText && !stageMemory.innerText && !stageWriteback.innerText) { // Also check if pipeline stages look empty
+                clearInterval(runInterval);
+                isRunning = false;
+                // Check if backend also signaled completion
+                // statusMessage might already be 'Simulation complete!'
+                if (statusMessage.innerText !== 'Simulation complete!') {
+                    statusMessage.innerText = 'Pipeline empty.';
+                }
+                updateControlButtons(true, false, false, true); // Allow Load/Reset
+           } else {
+                 ipcRenderer.send('step-simulation');
+           }
+        }, runSpeed);
+      } else { // Pause running
+        statusMessage.innerText = 'Paused.';
+        isRunning = false;
+        clearInterval(runInterval);
+        const instructionsLoaded = instructionQueueContainer.children.length > 0 && !instructionQueueContainer.querySelector('.queue-empty-message');
+        updateControlButtons(true, instructionsLoaded, instructionsLoaded, true); // Re-enable buttons based on queue
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      statusMessage.classList.remove('error');
+      if (isRunning) {
+        isRunning = false;
+        clearInterval(runInterval);
+      }
+      updateControlButtons(false, false, false, false);
+      statusMessage.innerText = 'Resetting simulation...';
+      ipcRenderer.send('reset-simulation');
+    });
+
+    // --- IPC Listeners for Updates from Backend ---
+
+    // Main state update handler
+    ipcRenderer.on('update-state', (event, data) => {
+      // Update clock
+      clockCycleElement.innerText = `Clock Cycle: ${data.pipeline.clockCycle}`;
+
+      // Update Pipeline Stages Display (Optional)
+       stageFetch.innerText = data.pipeline.fetch || '-';
+       stageDecode.innerText = data.pipeline.decode || '-';
+       stageExecute.innerText = data.pipeline.execute || '-';
+       stageMemory.innerText = data.pipeline.memory || '-';
+       stageWriteback.innerText = data.pipeline.writeBack || '-';
+       // Add highlighting for pipeline stages if desired
+
+      // Update Special Registers
+      if (pcValueElement.innerText !== String(data.programCounter)) {
+          pcValueElement.innerText = data.programCounter;
+          highlightElement(pcValueElement.parentElement);
+      }
+      const irText = data.instructionRegister || '-';
+      if (irValueElement.innerText !== irText) {
+           irValueElement.innerText = irText;
+           highlightElement(irValueElement.parentElement);
+      }
+
+      // Update General Registers
+      if (data.registers && Array.isArray(data.registers)) {
+          data.registers.forEach((value, i) => {
+                const registerElement = registerElements[i];
+                if (registerElement) {
+                    const currentText = `R${i}: ${value}`;
+                    if (registerElement.innerText !== currentText) { // Check if value actually changed
+                         if (value !== lastRegisterValues[i]) { // Compare with last known value
+                            registerElement.innerText = currentText;
+                            highlightElement(registerElement);
+                            lastRegisterValues[i] = value; // Update last known value
+                         } else {
+                              // Value is same as last known, ensure text is correct without highlight
+                             registerElement.innerText = currentText;
+                         }
+                    }
+                }
+          });
+      }
+
+      // Update Instruction Queue
+      instructionQueueContainer.innerHTML = '';
+      if (data.instructionQueue && data.instructionQueue.length > 0) {
+        data.instructionQueue.forEach((instruction) => {
+          const queueItem = document.createElement('div');
+          queueItem.className = 'queue-item';
+          queueItem.innerText = instruction;
+          queueItem.title = instruction;
+          instructionQueueContainer.appendChild(queueItem);
+        });
+         instructionQueueContainer.scrollTop = 0;
+      } else {
+           instructionQueueContainer.innerHTML = '<div class="queue-empty-message">Queue Empty</div>';
+      }
+
+      // Update Memory Display
+      if (data.memory) {
+        for (let addr = 0; addr < 64; addr++) {
+            const memCell = memoryElements[addr];
+            if (memCell) {
+                const rawValue = data.memory[addr];
+                // Default to 0 if missing/undefined/ERR from snapshot
+                const value = (rawValue !== undefined && rawValue !== 'ERR') ? rawValue : 0;
+                const currentText = `Addr ${addr}: ${value}`;
+
+                if (memCell.innerText !== currentText) {
+                     if (value !== lastMemoryValues[addr]) { // Compare with last known value
+                         memCell.innerText = currentText;
+                         highlightElement(memCell);
+                         lastMemoryValues[addr] = value; // Update last known value
+                     } else {
+                          memCell.innerText = currentText; // Ensure text is correct
+                     }
+                }
+            }
+        }
+      }
+
+       // Update Control Buttons based on queue state if not running
+       const instructionsRemaining = data.instructionQueue && data.instructionQueue.length > 0;
+        // Check if pipeline stages are also empty (more robust completion check)
+       const pipelineEmpty = !data.pipeline.decode && !data.pipeline.execute && !data.pipeline.memory && !data.pipeline.writeBack;
+
+       if (!isRunning) {
+            updateControlButtons(
+                true, // Load always enabled when not running
+                instructionsRemaining || !pipelineEmpty, // Enable Step if queue has items OR pipeline isn't empty
+                instructionsRemaining || !pipelineEmpty, // Enable Run if queue has items OR pipeline isn't empty
+                true // Reset always enabled when not running
+            );
+            // Update status message based on state
+             if (!instructionsRemaining && pipelineEmpty && statusMessage.innerText !== 'Simulation complete!' && !statusMessage.classList.contains('error')) {
+                 statusMessage.innerText = 'Simulation complete!';
+             } else if (statusMessage.innerText === 'Stepping...') {
+                  statusMessage.innerText = 'Ready.';
+             }
+       }
+
+    }); // End of 'update-state' handler
+
+    // Handle 'instructions-loaded' event
+    ipcRenderer.on('instructions-loaded', (event, count) => {
+      statusMessage.classList.remove('error');
+      if (count > 0) {
+        statusMessage.innerText = `Loaded ${count} instructions. Ready to Step or Run.`;
+        updateControlButtons(true, true, true, true);
+      } else {
+         statusMessage.innerText = `No executable instructions loaded. Check instructions.txt.`;
+         updateControlButtons(true, false, false, true);
+      }
+    });
+
+    // Handle 'simulation-complete' event
+    ipcRenderer.on('simulation-complete', () => {
+      statusMessage.classList.remove('error');
+      statusMessage.innerText = 'Simulation complete!';
+      if (isRunning) { // Stop auto-run if active
+        isRunning = false;
+        clearInterval(runInterval);
+      }
+       updateControlButtons(true, false, false, true); // Allow Load or Reset
+    });
+
+     // Handle 'simulation-error' event (from backend)
+     ipcRenderer.on('simulation-error', (event, message) => {
+         statusMessage.classList.add('error');
+         statusMessage.innerText = `${message}`;
+         if (isRunning) {
+            isRunning = false;
+            clearInterval(runInterval);
+         }
+          updateControlButtons(true, false, false, true); // Allow Load/Reset
+     });
+
+     // Handle 'simulation-reset-complete' event (confirmation from backend)
+     ipcRenderer.on('simulation-reset-complete', () => {
+         statusMessage.classList.remove('error');
+         statusMessage.innerText = 'Simulation reset. Load instructions to begin.';
+         // Reset UI elements
+         initializeRegistersUI();
+         initializeMemoryUI();
+         instructionQueueContainer.innerHTML = '<div class="queue-empty-message">Queue Empty</div>';
+
+         // Reset optional pipeline display
+         stageFetch.innerText = '-';
+         stageDecode.innerText = '-';
+         stageExecute.innerText = '-';
+         stageMemory.innerText = '-';
+         stageWriteback.innerText = '-';
+
+         updateControlButtons(true, false, false, true);
+         document.querySelectorAll('.highlight, .highlight-remove').forEach(el => {
+             el.classList.remove('highlight', 'highlight-remove');
+             el.style.backgroundColor = '';
+         });
+         clockCycleElement.innerText = 'Clock Cycle: 0';
+         pcValueElement.innerText = '-1';
+         irValueElement.innerText = '-';
+     });
+
+     // --- Initial Setup on Window Load ---
+     window.onload = () => {
+          console.log("Window loaded, requesting initial reset.");
+          ipcRenderer.send('reset-simulation');
+     }
+
+  </script>
+</body>
+</html>
